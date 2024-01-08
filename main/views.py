@@ -604,29 +604,53 @@ import os
 
 class GetPostsDataView(View):
     def get(self, request, *args, **kwargs):
-        pickle_directory = 'main'  # Замените на реальный путь
+        pickle_directory = 'main'
 
-        all_accounts_data = {}
+        all_accounts_data = []
 
         try:
             for filename in os.listdir(pickle_directory):
-                if filename.endswith('_posts_data.pickle'):
+                if filename.endswith('_data.pickle'):
                     pickle_file_path = os.path.join(pickle_directory, filename)
-                    
+
                     with open(pickle_file_path, 'rb') as pickle_in:
                         account_data = pickle.load(pickle_in)
-                    
-                    # Извлекаем имя аккаунта из имени файла
-                    account_name = filename.replace('_posts_data.pickle', '')
-                    
-                    # Добавляем данные постов к соответствующему аккаунту в словаре
-                    all_accounts_data.setdefault(account_name, []).extend(account_data)
 
-            # Дополнительная обработка данных, если необходимо
+                    all_accounts_data.extend(account_data)
 
-            return JsonResponse({'accounts_data': all_accounts_data})
+            school_param = request.GET.get('school')
+            account_name_param = request.GET.get('account_name')
+
+            filtered_data = self.filter_data(all_accounts_data, school_param, account_name_param)
+
+            return JsonResponse({'accounts_data': filtered_data})
 
         except FileNotFoundError:
             return JsonResponse({'error': 'File not found'}, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+    def filter_data(self, data, school_param, account_name_param):
+        filtered_data = []
+
+        for item in data:
+            if school_param and item.get('school') is not None and item.get('school') != int(school_param):
+                print(f"Skipping item {item['id']} due to school mismatch (expected {school_param}, got {item['school']})")
+                continue
+
+            if account_name_param and item.get('login') is not None and item.get('login') != account_name_param:
+                print(f"Skipping item {item['id']} due to account name mismatch (expected {account_name_param}, got {item['login']})")
+                continue
+
+            post_data = {
+                'id': item.get('id'),
+                'text': item.get('text'),
+                'timestamp': item.get('timestamp'),
+                'media': [{'url': media_item['url'], 'is_video': media_item['is_video']} for media_item in item.get('media')],
+                'login': item.get('login') if item.get('login') is not None else 'N/A',
+                'school': item.get('school') if item.get('school') is not None else 'N/A'
+            }
+
+            filtered_data.append(post_data)
+
+        return filtered_data
