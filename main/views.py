@@ -646,11 +646,24 @@ class GetPostsDataView(View):
                 'id': item.get('id'),
                 'text': item.get('text'),
                 'timestamp': item.get('timestamp'),
-                'media': [{'url': media_item['url'], 'is_video': media_item['is_video']} for media_item in item.get('media')],
+                'media': [],
                 'login': item.get('login') if item.get('login') is not None else 'N/A',
                 'school': item.get('school') if item.get('school') is not None else 'N/A'
             }
 
+            for media_item in item.get('media'):
+                media_data = {
+                    'url': media_item['url'],
+                    'is_video': media_item['is_video']
+                }
+
+                # Добавление thumbnail_url для видео
+                if media_item['is_video']:
+                    media_data['thumbnail_url'] = media_item.get('thumbnail_url', 'N/A')
+
+                post_data['media'].append(media_data)
+
             filtered_data.append(post_data)
 
         return filtered_data
+
